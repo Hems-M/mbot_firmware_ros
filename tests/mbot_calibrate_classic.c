@@ -366,5 +366,9 @@ int main() {
 
     printf("\nDone!\n");
     fflush(stdout);  // Make sure all output is sent to the terminal
-    sleep_ms(1000);   
+    // Keep servicing USB after calibration (instead of returning from main), so
+    // mbot-upload-firmware can ask for BOOTSEL mode over USB to flash the next program.
+    while (true) {
+        mbot_wait_ms(1000);
+    }
 }

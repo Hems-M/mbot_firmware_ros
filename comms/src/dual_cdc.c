@@ -2,7 +2,26 @@
 #include "tusb.h"
 #include "pico/mutex.h"
 #include "pico/time.h"
+#include "pico/bootrom.h"
 #include <string.h>
+
+// Software BOOTSEL: when the Raspberry Pi opens the debug console (CDC0,
+// /dev/mbot_debug) at 1200 baud, reboot the RP2040 into its USB bootloader
+// (BOOTSEL mode). The Pi can then flash new firmware over the existing USB
+// cable, with no buttons and no GPIO wires between the Pi and the board.
+// 1200 baud is the same "magic baud rate" that pico_stdio_usb and Arduino use.
+// pico_stdio_usb's own version of this callback is compiled out because this
+// project links tinyusb_device directly, so we provide it here.
+#define MBOT_BOOTSEL_MAGIC_BAUD 1200
+
+void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* p_line_coding) {
+    if (itf == 0 && p_line_coding->bit_rate == MBOT_BOOTSEL_MAGIC_BAUD) {
+        // Full chip reset into the ROM bootloader. Motor PWM outputs return to
+        // their reset state, so the motors stop. Both USB boot interfaces
+        // (mass storage and PICOBOOT for picotool) stay enabled.
+        reset_usb_boot(0, 0);
+    }
+}
 
 // Mutex to protect CDC access
 static mutex_t dual_cdc_mutex;
